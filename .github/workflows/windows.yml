@@ -1,0 +1,28 @@
+name: Windows POS
+on:
+  push:
+    branches: [develop]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt pyinstaller
+      - run: python -m unittest discover -s tests -v
+      - run: python -m PyInstaller --noconfirm --clean --windowed --onefile --name CafeSelection launcher.py
+      - name: Verify executable exists
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist/CafeSelection.exe)) { throw 'Executable was not generated' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CafeSelection-Windows
+          path: dist/CafeSelection.exe
+          if-no-files-found: error

@@ -1,0 +1,1 @@
+"""Café Sélection desktop application."""

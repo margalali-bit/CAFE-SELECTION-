@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+*.db
+*.db-wal
+*.db-shm
+backups/
+build/
+dist/
+*.spec
+.dart_tool/
