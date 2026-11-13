@@ -1,6 +1,7 @@
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from datetime import date
 from pathlib import Path
 from desktop_pos.database import Database, money
@@ -52,7 +53,7 @@ class CoreTests(unittest.TestCase):
             self.db.checkout(self.waiter, {product: 1, 'missing': 1})
         self.assertEqual(self.db.conn.execute('SELECT COUNT(*) FROM orders').fetchone()[0], 0)
         path = self.db.backup(self.admin, Path(self.temp.name) / 'backups')
-        with sqlite3.connect(path) as copy:
+        with closing(sqlite3.connect(path)) as copy:
             self.assertEqual(copy.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
             self.assertEqual(copy.execute('SELECT COUNT(*) FROM users').fetchone()[0], 2)
 

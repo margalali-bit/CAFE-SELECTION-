@@ -5,6 +5,7 @@ import json
 import secrets
 import sqlite3
 import time
+from contextlib import closing
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -191,7 +192,7 @@ class Database:
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         target = directory / f'cafe-{datetime.now():%Y%m%d-%H%M%S}-{uuid4().hex[:8]}.db'
-        with sqlite3.connect(target) as destination:
+        with closing(sqlite3.connect(target)) as destination:
             self.conn.backup(destination)
             if destination.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                 raise RuntimeError('فشل التحقق من النسخة الاحتياطية')
