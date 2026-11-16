@@ -1,0 +1,44 @@
+name: Electron Windows POS
+on:
+  push:
+    branches: [develop, "feature/**"]
+    paths:
+      [
+        "electron_pos/**",
+        "supabase/**",
+        ".github/workflows/electron-windows.yml",
+      ]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: electron_pos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: electron_pos/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3
+      - run: npm test
+      - run: node node_modules/electron/install.js
+      - run: npx electron-builder install-app-deps
+      - run: npx electron test/electron-smoke.cjs
+      - run: npm run build:win -- --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CafeSelection-Electron-Windows
+          path: electron_pos/dist/*.exe
+          if-no-files-found: error

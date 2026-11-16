@@ -1,0 +1,51 @@
+{
+  "name": "cafe-selection-pos",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Cafe Selection Tiznit offline POS",
+  "author": "Cafe Selection",
+  "main": "src/main/electron.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test --test-isolation=none test/*.test.cjs",
+    "preview": "node src/main/preview.cjs",
+    "build:win": "electron-builder --win nsis portable",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.80.0",
+    "better-sqlite3": "^12.4.1",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@playwright/test": "^1.56.1",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "prettier": "^3.10.1"
+  },
+  "build": {
+    "appId": "ma.cafeselection.pos",
+    "productName": "CafeSelection",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
