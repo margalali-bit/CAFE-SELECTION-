@@ -2,11 +2,14 @@ const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const { mkdtempSync, rmSync } = require("node:fs");
-const dir = mkdtempSync("/tmp/cafe-browser-");
+const { join } = require("node:path");
+const { tmpdir } = require("node:os");
+const dir = mkdtempSync(join(tmpdir(), "cafe-browser-"));
 const server = spawn(process.execPath, ["src/main/preview.cjs"], {
   env: { ...process.env, PORT: "4174", CAFE_PREVIEW_DB: dir + "/test.sqlite" },
   stdio: "pipe",
 });
+server.on("exit", () => rmSync(dir, { recursive: true, force: true }));
 (async () => {
   await new Promise((resolve) => server.stdout.once("data", resolve));
   const browser = await chromium.launch({
@@ -79,7 +82,7 @@ const server = spawn(process.execPath, ["src/main/preview.cjs"], {
   await page.getByRole("button", { name: /قهوة إسبريسو/ }).click();
   await page.waitForFunction(() => document.body.dataset.busy !== "true");
   await page.screenshot({
-    path: "/workspace/cafe-selection/docs/pos-v2.png",
+    path: join(__dirname, "../../docs/pos-v2.png"),
     fullPage: true,
   });
   await page
@@ -120,7 +123,7 @@ const server = spawn(process.execPath, ["src/main/preview.cjs"], {
   await page.getByRole("heading", { name: "نظرة عامة" }).waitFor();
   assert((await page.getByText("7.00 د.م", { exact: true }).count()) > 0);
   await page.screenshot({
-    path: "/workspace/cafe-selection/docs/dashboard-v2.png",
+    path: join(__dirname, "../../docs/dashboard-v2.png"),
     fullPage: true,
   });
   await page

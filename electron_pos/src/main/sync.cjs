@@ -10,6 +10,7 @@ class Sync {
       error: null,
     };
     this.busy = false;
+    this.lastDay = service.day();
     if (
       config.url &&
       config.key &&
@@ -43,6 +44,10 @@ class Sync {
     this.busy = true;
     this.status.state = "syncing";
     try {
+      if (this.service.day() !== this.lastDay) {
+        this.service.event("business_day.started");
+        this.lastDay = this.service.day();
+      }
       if (
         !this.client.auth.getSession ||
         !(await this.client.auth.getSession()).data.session
@@ -117,6 +122,7 @@ class Sync {
     }
   }
   start() {
+    if (this.client) this.service.event("device.started");
     this.tick();
     this.timer = setInterval(() => this.tick(), 5000);
   }

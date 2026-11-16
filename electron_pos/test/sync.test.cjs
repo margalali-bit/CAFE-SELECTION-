@@ -74,3 +74,25 @@ test("bad cloud configuration or a service key never blocks local sales", (t) =>
   service.setup({ name: "Owner", pin: "123456" });
   assert(service.login({ name: "Owner", pin: "123456" }).token);
 });
+
+test("commercial day transition is queued even when no new order is placed", async (t) => {
+  let now = new Date("2026-11-16T12:00:00Z");
+  const service = new Service(":memory:", () => now);
+  t.after(() => service.close());
+  const sync = new Sync(service, {});
+  sync.client = {
+    auth: {
+      getSession: async () => {
+        throw Error("offline");
+      },
+    },
+  };
+  now = new Date("2026-11-17T12:00:00Z");
+  await sync.tick();
+  assert.equal(
+    service.db.prepare("SELECT kind FROM outbox").get().kind,
+    "business_day.started",
+  );
+  await sync.tick();
+  assert.equal(service.db.prepare("SELECT COUNT(*) n FROM outbox").get().n, 1);
+});
