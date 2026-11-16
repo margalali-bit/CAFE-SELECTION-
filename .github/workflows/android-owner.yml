@@ -1,0 +1,53 @@
+name: Android Owner App
+on:
+  push:
+    branches: [develop, 'feature/**']
+    paths: ['mobile_owner/**', '.github/workflows/android-owner.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile_owner
+    env:
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_CAFE_ID: ${{ vars.CAFE_ID }}
+      EXPO_PUBLIC_EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile_owner/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run check
+      - name: Optional Firebase Android configuration
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > "$RUNNER_TEMP/cafe-google-services.json"
+            echo "GOOGLE_SERVICES_JSON_PATH=$RUNNER_TEMP/cafe-google-services.json" >> "$GITHUB_ENV"
+          fi
+      - run: npx expo prebuild --platform android --no-install
+      - name: Build self-contained APK (development signing)
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CafeSelection-Owner-Android-Development
+          path: mobile_owner/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

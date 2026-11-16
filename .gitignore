@@ -10,3 +10,16 @@ build/
 dist/
 *.spec
 .dart_tool/
+node_modules/
+*.sqlite-wal
+*.sqlite-shm
+preview-data.sqlite
+*.sqlite3
+.expo/
+android/.gradle/
+android/local.properties
+mobile_owner/android/
+.env.*
+!.env.example
+artifacts/
+google-services.json
