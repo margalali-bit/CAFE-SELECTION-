@@ -1,14 +1,202 @@
-const {test}=require('node:test');
-const assert=require('node:assert/strict');
-const {mkdtempSync,rmSync}=require('node:fs');
-const {tmpdir}=require('node:os');
-const {join}=require('node:path');
-const {Service,amount,businessDay}=require('../src/main/service.cjs');
-function fixture(t){let now=new Date('2026-11-16T12:00:00Z');const dir=mkdtempSync(join(tmpdir(),'cafe-')),s=new Service(join(dir,'test.sqlite'),()=>now);t.after(()=>{s.close();rmSync(dir,{recursive:true,force:true});});s.setup({name:'Owner',pin:'982761'});const admin=s.login({name:'Owner',pin:'982761'}).token;const waiterId=s.saveUser(admin,{name:'Waiter',pin:'1234'});const waiter=s.login({name:'Waiter',pin:'1234'}).token;const category=s.saveCategory(admin,{name:'قهوة'}),product=s.saveProduct(admin,{name:'قهوة',price:'12.35',category_id:category});const order=(extra={})=>s.checkout(waiter,{request_id:require('node:crypto').randomUUID(),payment:'cash',items:[{product_id:product,quantity:2,version:1}],...extra});return {s,admin,waiter,waiterId,category,product,order,dir,setTime:value=>now=new Date(value)};}
-test('centimes validation and Morocco commercial day including DST',()=>{assert.equal(amount('12.35'),1235);for(const v of ['NaN','Infinity','-1','1.001','1e3',''])assert.throws(()=>amount(v));assert.equal(businessDay('2026-11-16T02:00:00Z'), '2026-11-15');assert.equal(businessDay('2026-11-16T06:00:00Z'), '2026-11-16');assert.equal(businessDay('2026-03-01T02:00:00Z'), '2026-02-28');});
-test('secure users, lockout, service permissions and session revocation',t=>{const {s,admin,waiter,waiterId}=fixture(t);assert.throws(()=>s.report(waiter),/غير مسموح/);assert.throws(()=>s.expense(waiter,{title:'milk',amount:10}),/غير مسموح/);assert.throws(()=>s.checkout(admin,{}),/غير مسموح/);assert.throws(()=>s.setup({name:'x',pin:'1111'}));const u=s.db.prepare('SELECT * FROM users WHERE id=?').get(waiterId);assert.notEqual(u.pin_hash,'1234');assert(!JSON.stringify(s.snapshot()).includes(u.pin_hash));for(let i=0;i<5;i++)assert.throws(()=>s.login({name:'Waiter',pin:'0000'}));assert.throws(()=>s.login({name:'Waiter',pin:'1234'}));s.saveUser(admin,{id:waiterId,name:'Waiter',pin:'5678',active:true});assert.throws(()=>s.state(waiter));assert(s.login({name:'Waiter',pin:'5678'}).token);});
-test('atomic checkout, daily numbers, immutable prices, no duplicate on retry',t=>{const {s,admin,waiter,product,category,order,setTime}=fixture(t);const o=order({request_id:'stable'});assert.equal(o.number,1);assert.equal(o.total,2470);assert.equal(order({request_id:'stable'}).id,o.id);assert.equal(s.db.prepare('SELECT COUNT(*) n FROM orders').get().n,1);assert.throws(()=>order({items:[{product_id:product,quantity:1,version:1},{product_id:'missing',quantity:1,version:1}]}));assert.equal(s.db.prepare('SELECT COUNT(*) n FROM orders').get().n,1);s.saveProduct(admin,{id:product,category_id:category,name:'قهوة',price:'20',available:true,version:1});assert.throws(()=>order(),/تغير سعر/);assert.equal(s.receipt(waiter,{id:o.id}).items[0].unit_price,1235);setTime('2026-11-17T12:00:00Z');assert.equal(order({items:[{product_id:product,quantity:1,version:2}]}).number,1);});
-test('shift cash excludes credit/cancelled, settlement and admin cancellation reopens review',t=>{const {s,admin,waiter,order}=fixture(t);const a=order(),b=order();s.cancel(waiter,{id:b.id,reason:'خطأ'});s.closeShift(waiter,{delivered:'24'});let shift=s.state(admin).shifts[0];assert.equal(shift.expected,2470);assert.equal(shift.difference,-70);assert.throws(()=>s.cancel(waiter,{id:a.id,reason:'متأخر'}));s.confirmShift(admin,{id:shift.id});s.cancel(admin,{id:a.id,reason:'تصحيح المالك'});shift=s.state(admin).shifts[0];assert.equal(shift.status,'closed');assert.equal(shift.expected,0);assert.equal(shift.difference,2400);assert.equal(s.report(admin).revenue,0);});
-test('credit disabled, caps, receipt of debt counted on repayment day and idempotent payment',t=>{const {s,admin,waiter,order,setTime}=fixture(t);const customer=s.customer(admin,{name:'زبون',limit:'50'});assert.throws(()=>order({payment:'credit',customer_id:customer}),/معطلة/);s.saveSettings(admin,{debts_enabled:true});order({payment:'credit',customer_id:customer});order({payment:'credit',customer_id:customer});assert.throws(()=>order({payment:'credit',customer_id:customer}),/حد الدين/);assert.equal(s.report(admin).revenue,0);assert.equal(s.report(admin).credit,4940);assert.equal(s.state(waiter).customers[0].balance,4940);setTime('2026-11-17T12:00:00Z');s.payment(admin,{customer_id:customer,amount:'20',request_id:'repay-1'});s.payment(admin,{customer_id:customer,amount:'20',request_id:'repay-1'});assert.equal(s.balance(customer),2940);assert.equal(s.report(admin,{date:'2026-11-16'}).revenue,0);assert.equal(s.report(admin,{date:'2026-11-17'}).revenue,2000);assert.throws(()=>s.payment(admin,{customer_id:customer,amount:'30',request_id:'repay-2'}));});
-test('expenses-only report, cancelled credit cannot erase a repaid balance, settings boundary',t=>{const {s,admin,order}=fixture(t);const c=s.customer(admin,{name:'Test',limit:100});s.saveSettings(admin,{debts_enabled:true});const o=order({payment:'credit',customer_id:c});s.payment(admin,{customer_id:c,amount:'10',request_id:'payment'});assert.throws(()=>s.cancel(admin,{id:o.id,reason:'خطأ'}));assert.throws(()=>s.saveSettings(admin,{day_start:6}),/أغلق الورديات/);s.expense(admin,{title:'الحليب',category:'مواد',amount:'50'});const r=s.report(admin,{date:'2026-11-16',monthly:true});assert.equal(r.net,-4000);assert.equal(r.days[0].expenses,5000);});
-test('remote commands idempotent and atomic, backups preserve all rows',async t=>{const {s,admin,dir}=fixture(t);const command={id:'remote-1',kind:'settings',payload:{debts_enabled:true}};s.applyCommand(command);const n=s.db.prepare('SELECT COUNT(*) n FROM outbox').get().n;s.applyCommand(command);assert.equal(s.db.prepare('SELECT COUNT(*) n FROM outbox').get().n,n);assert.throws(()=>s.applyCommand({id:'bad',kind:'settings',payload:{day_start:99}}));assert(!s.db.prepare('SELECT 1 FROM applied_commands WHERE id=?').get('bad'));const path=await s.backup(join(dir,'backups'));const SQLite=require('better-sqlite3'),copy=new SQLite(path);try{assert.equal(copy.pragma('integrity_check',{simple:true}),'ok');assert.equal(copy.prepare('SELECT COUNT(*) n FROM users').get().n,2);}finally{copy.close();}});
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const { mkdtempSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const { Service, amount, businessDay } = require("../src/main/service.cjs");
+function fixture(t) {
+  let now = new Date("2026-11-16T12:00:00Z");
+  const dir = mkdtempSync(join(tmpdir(), "cafe-")),
+    s = new Service(join(dir, "test.sqlite"), () => now);
+  t.after(() => {
+    s.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  s.setup({ name: "Owner", pin: "982761" });
+  const admin = s.login({ name: "Owner", pin: "982761" }).token;
+  const waiterId = s.saveUser(admin, { name: "Waiter", pin: "1234" });
+  const waiter = s.login({ name: "Waiter", pin: "1234" }).token;
+  const category = s.saveCategory(admin, { name: "قهوة" }),
+    product = s.saveProduct(admin, {
+      name: "قهوة",
+      price: "12.35",
+      category_id: category,
+    });
+  const order = (extra = {}) =>
+    s.checkout(waiter, {
+      request_id: require("node:crypto").randomUUID(),
+      payment: "cash",
+      items: [{ product_id: product, quantity: 2, version: 1 }],
+      ...extra,
+    });
+  return {
+    s,
+    admin,
+    waiter,
+    waiterId,
+    category,
+    product,
+    order,
+    dir,
+    setTime: (value) => (now = new Date(value)),
+  };
+}
+test("centimes validation and Morocco commercial day including DST", () => {
+  assert.equal(amount("12.35"), 1235);
+  for (const v of ["NaN", "Infinity", "-1", "1.001", "1e3", ""])
+    assert.throws(() => amount(v));
+  assert.equal(businessDay("2026-11-16T02:00:00Z"), "2026-11-15");
+  assert.equal(businessDay("2026-11-16T06:00:00Z"), "2026-11-16");
+  assert.equal(businessDay("2026-03-01T02:00:00Z"), "2026-02-28");
+});
+test("secure users, lockout, service permissions and session revocation", (t) => {
+  const { s, admin, waiter, waiterId } = fixture(t);
+  assert.throws(() => s.report(waiter), /غير مسموح/);
+  assert.throws(
+    () => s.expense(waiter, { title: "milk", amount: 10 }),
+    /غير مسموح/,
+  );
+  assert.throws(() => s.checkout(admin, {}), /غير مسموح/);
+  assert.throws(() => s.setup({ name: "x", pin: "1111" }));
+  const u = s.db.prepare("SELECT * FROM users WHERE id=?").get(waiterId);
+  assert.notEqual(u.pin_hash, "1234");
+  assert(!JSON.stringify(s.snapshot()).includes(u.pin_hash));
+  for (let i = 0; i < 5; i++)
+    assert.throws(() => s.login({ name: "Waiter", pin: "0000" }));
+  assert.throws(() => s.login({ name: "Waiter", pin: "1234" }));
+  s.saveUser(admin, {
+    id: waiterId,
+    name: "Waiter",
+    pin: "5678",
+    active: true,
+  });
+  assert.throws(() => s.state(waiter));
+  assert(s.login({ name: "Waiter", pin: "5678" }).token);
+});
+test("atomic checkout, daily numbers, immutable prices, no duplicate on retry", (t) => {
+  const { s, admin, waiter, product, category, order, setTime } = fixture(t);
+  const o = order({ request_id: "stable" });
+  assert.equal(o.number, 1);
+  assert.equal(o.total, 2470);
+  assert.equal(order({ request_id: "stable" }).id, o.id);
+  assert.equal(s.db.prepare("SELECT COUNT(*) n FROM orders").get().n, 1);
+  assert.throws(() =>
+    order({
+      items: [
+        { product_id: product, quantity: 1, version: 1 },
+        { product_id: "missing", quantity: 1, version: 1 },
+      ],
+    }),
+  );
+  assert.equal(s.db.prepare("SELECT COUNT(*) n FROM orders").get().n, 1);
+  s.saveProduct(admin, {
+    id: product,
+    category_id: category,
+    name: "قهوة",
+    price: "20",
+    available: true,
+    version: 1,
+  });
+  assert.throws(() => order(), /تغير سعر/);
+  assert.equal(s.receipt(waiter, { id: o.id }).items[0].unit_price, 1235);
+  setTime("2026-11-17T12:00:00Z");
+  assert.equal(
+    order({ items: [{ product_id: product, quantity: 1, version: 2 }] }).number,
+    1,
+  );
+});
+test("shift cash excludes credit/cancelled, settlement and admin cancellation reopens review", (t) => {
+  const { s, admin, waiter, order } = fixture(t);
+  const a = order(),
+    b = order();
+  s.cancel(waiter, { id: b.id, reason: "خطأ" });
+  s.closeShift(waiter, { delivered: "24" });
+  let shift = s.state(admin).shifts[0];
+  assert.equal(shift.expected, 2470);
+  assert.equal(shift.difference, -70);
+  assert.throws(() => s.cancel(waiter, { id: a.id, reason: "متأخر" }));
+  s.confirmShift(admin, { id: shift.id });
+  s.cancel(admin, { id: a.id, reason: "تصحيح المالك" });
+  shift = s.state(admin).shifts[0];
+  assert.equal(shift.status, "closed");
+  assert.equal(shift.expected, 0);
+  assert.equal(shift.difference, 2400);
+  assert.equal(s.report(admin).revenue, 0);
+});
+test("credit disabled, caps, receipt of debt counted on repayment day and idempotent payment", (t) => {
+  const { s, admin, waiter, order, setTime } = fixture(t);
+  const customer = s.customer(admin, { name: "زبون", limit: "50" });
+  assert.throws(
+    () => order({ payment: "credit", customer_id: customer }),
+    /معطلة/,
+  );
+  s.saveSettings(admin, { debts_enabled: true });
+  order({ payment: "credit", customer_id: customer });
+  order({ payment: "credit", customer_id: customer });
+  assert.throws(
+    () => order({ payment: "credit", customer_id: customer }),
+    /حد الدين/,
+  );
+  assert.equal(s.report(admin).revenue, 0);
+  assert.equal(s.report(admin).credit, 4940);
+  assert.equal(s.state(waiter).customers[0].balance, 4940);
+  setTime("2026-11-17T12:00:00Z");
+  s.payment(admin, {
+    customer_id: customer,
+    amount: "20",
+    request_id: "repay-1",
+  });
+  s.payment(admin, {
+    customer_id: customer,
+    amount: "20",
+    request_id: "repay-1",
+  });
+  assert.equal(s.balance(customer), 2940);
+  assert.equal(s.report(admin, { date: "2026-11-16" }).revenue, 0);
+  assert.equal(s.report(admin, { date: "2026-11-17" }).revenue, 2000);
+  assert.throws(() =>
+    s.payment(admin, {
+      customer_id: customer,
+      amount: "30",
+      request_id: "repay-2",
+    }),
+  );
+});
+test("expenses-only report, cancelled credit cannot erase a repaid balance, settings boundary", (t) => {
+  const { s, admin, order } = fixture(t);
+  const c = s.customer(admin, { name: "Test", limit: 100 });
+  s.saveSettings(admin, { debts_enabled: true });
+  const o = order({ payment: "credit", customer_id: c });
+  s.payment(admin, { customer_id: c, amount: "10", request_id: "payment" });
+  assert.throws(() => s.cancel(admin, { id: o.id, reason: "خطأ" }));
+  assert.throws(() => s.saveSettings(admin, { day_start: 6 }), /أغلق الورديات/);
+  s.expense(admin, { title: "الحليب", category: "مواد", amount: "50" });
+  const r = s.report(admin, { date: "2026-11-16", monthly: true });
+  assert.equal(r.net, -4000);
+  assert.equal(r.days[0].expenses, 5000);
+});
+test("remote commands idempotent and atomic, backups preserve all rows", async (t) => {
+  const { s, admin, dir } = fixture(t);
+  const command = {
+    id: "remote-1",
+    kind: "settings",
+    payload: { debts_enabled: true },
+  };
+  s.applyCommand(command);
+  const n = s.db.prepare("SELECT COUNT(*) n FROM outbox").get().n;
+  s.applyCommand(command);
+  assert.equal(s.db.prepare("SELECT COUNT(*) n FROM outbox").get().n, n);
+  assert.throws(() =>
+    s.applyCommand({ id: "bad", kind: "settings", payload: { day_start: 99 } }),
+  );
+  assert(!s.db.prepare("SELECT 1 FROM applied_commands WHERE id=?").get("bad"));
+  const path = await s.backup(join(dir, "backups"));
+  const SQLite = require("better-sqlite3"),
+    copy = new SQLite(path);
+  try {
+    assert.equal(copy.pragma("integrity_check", { simple: true }), "ok");
+    assert.equal(copy.prepare("SELECT COUNT(*) n FROM users").get().n, 2);
+  } finally {
+    copy.close();
+  }
+});

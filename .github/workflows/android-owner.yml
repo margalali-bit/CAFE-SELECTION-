@@ -1,8 +1,8 @@
 name: Android Owner App
 on:
   push:
-    branches: [develop, 'feature/**']
-    paths: ['mobile_owner/**', '.github/workflows/android-owner.yml']
+    branches: [develop, "feature/**"]
+    paths: ["mobile_owner/**", ".github/workflows/android-owner.yml"]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -14,7 +14,7 @@ jobs:
       run:
         working-directory: mobile_owner
     env:
-      EXPO_NO_TELEMETRY: '1'
+      EXPO_NO_TELEMETRY: "1"
       EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
       EXPO_PUBLIC_CAFE_ID: ${{ vars.CAFE_ID }}
@@ -23,13 +23,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
           cache-dependency-path: mobile_owner/package-lock.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
       - uses: android-actions/setup-android@v3
       - run: npm ci
       - run: npm run check

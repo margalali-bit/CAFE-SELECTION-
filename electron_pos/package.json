@@ -21,7 +21,8 @@
     "@electric-sql/pglite": "^0.5.16",
     "@playwright/test": "^1.56.1",
     "electron": "^39.0.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "prettier": "^3.10.1"
   },
   "build": {
     "appId": "ma.cafeselection.pos",

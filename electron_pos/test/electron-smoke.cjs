@@ -1,7 +1,81 @@
-const {app,BrowserWindow,ipcMain}=require('electron');
-const {join}=require('node:path');const {mkdtempSync,rmSync}=require('node:fs');const {tmpdir}=require('node:os');
-const {Service}=require('../src/main/service.cjs');const {receiptHTML}=require('../src/main/receipt.cjs');
-const dir=mkdtempSync(join(tmpdir(),'cafe-native-'));let service;
-app.whenReady().then(async()=>{service=new Service(join(dir,'smoke.sqlite'));ipcMain.handle('cafe:call',(_event,method)=>({ok:true,value:method==='info'?{setup:true,sync:{configured:false}}:null}));const w=new BrowserWindow({show:false,webPreferences:{preload:join(__dirname,'../src/main/preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});await w.loadFile(join(__dirname,'../src/renderer/index.html'));await new Promise(resolve=>setTimeout(resolve,300));const text=await w.webContents.executeJavaScript('document.body.textContent');if(!text.includes('إعداد حساب المالك'))throw Error('Native renderer did not show setup');const receipt=new BrowserWindow({show:false,webPreferences:{sandbox:true,nodeIntegration:false,contextIsolation:true}});await receipt.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(receiptHTML({number:1,business_day:'2026-11-16',created_at:'2026-11-16T12:00:00Z',waiter:'نادل',payment:'cash',status:'paid',total:1200,items:[{name:'قهوة',quantity:1,unit_price:1200}]})));const pdf=await receipt.webContents.printToPDF({pageSize:{width:3.15,height:6.3},printBackground:true});if(!pdf.subarray(0,4).equals(Buffer.from('%PDF')))throw Error('PDF was not generated');receipt.destroy();w.destroy();console.log('Native Electron: sandboxed renderer, SQLite and 80mm PDF passed');app.quit();}).catch(e=>{console.error(e);app.exit(1);});
-app.on('quit',()=>{service?.close();rmSync(dir,{recursive:true,force:true});});
-setTimeout(()=>{console.error('Native smoke test timed out');app.exit(1);},30000).unref();
+const { app, BrowserWindow, ipcMain } = require("electron");
+const { join } = require("node:path");
+const { mkdtempSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { Service } = require("../src/main/service.cjs");
+const { receiptHTML } = require("../src/main/receipt.cjs");
+const dir = mkdtempSync(join(tmpdir(), "cafe-native-"));
+let service;
+app
+  .whenReady()
+  .then(async () => {
+    service = new Service(join(dir, "smoke.sqlite"));
+    ipcMain.handle("cafe:call", (_event, method) => ({
+      ok: true,
+      value:
+        method === "info" ? { setup: true, sync: { configured: false } } : null,
+    }));
+    const w = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        preload: join(__dirname, "../src/main/preload.cjs"),
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+      },
+    });
+    await w.loadFile(join(__dirname, "../src/renderer/index.html"));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const text = await w.webContents.executeJavaScript(
+      "document.body.textContent",
+    );
+    if (!text.includes("إعداد حساب المالك"))
+      throw Error("Native renderer did not show setup");
+    const receipt = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        sandbox: true,
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+    await receipt.loadURL(
+      "data:text/html;charset=utf-8," +
+        encodeURIComponent(
+          receiptHTML({
+            number: 1,
+            business_day: "2026-11-16",
+            created_at: "2026-11-16T12:00:00Z",
+            waiter: "نادل",
+            payment: "cash",
+            status: "paid",
+            total: 1200,
+            items: [{ name: "قهوة", quantity: 1, unit_price: 1200 }],
+          }),
+        ),
+    );
+    const pdf = await receipt.webContents.printToPDF({
+      pageSize: { width: 3.15, height: 6.3 },
+      printBackground: true,
+    });
+    if (!pdf.subarray(0, 4).equals(Buffer.from("%PDF")))
+      throw Error("PDF was not generated");
+    receipt.destroy();
+    w.destroy();
+    console.log(
+      "Native Electron: sandboxed renderer, SQLite and 80mm PDF passed",
+    );
+    app.quit();
+  })
+  .catch((e) => {
+    console.error(e);
+    app.exit(1);
+  });
+app.on("quit", () => {
+  service?.close();
+  rmSync(dir, { recursive: true, force: true });
+});
+setTimeout(() => {
+  console.error("Native smoke test timed out");
+  app.exit(1);
+}, 30000).unref();
