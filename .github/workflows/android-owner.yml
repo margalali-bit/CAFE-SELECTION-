@@ -5,6 +5,9 @@ on:
     paths: ["mobile_owner/**", ".github/workflows/android-owner.yml"]
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -31,6 +34,8 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - run: npm ci
       - run: npm run check
       - name: Optional Firebase Android configuration
