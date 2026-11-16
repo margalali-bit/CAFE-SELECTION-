@@ -1,5 +1,5 @@
 import "react-native-url-polyfill/auto";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   AppState,
 } from "react-native";
 import { createClient, Session } from "@supabase/supabase-js";
+import { queueCommand } from "./lib/commands";
+import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import * as Notifications from "expo-notifications";
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL || "",
@@ -110,8 +112,10 @@ export default function App() {
     [reason, setReason] = useState(""),
     [price, setPrice] = useState(""),
     [paymentAmount, setPaymentAmount] = useState("");
+  const operationLock = useRef(false);
   const task = async (fn: () => Promise<void>) => {
-    if (working) return;
+    if (operationLock.current) return;
+    operationLock.current = true;
     setWorking(true);
     try {
       await fn();
@@ -121,6 +125,7 @@ export default function App() {
         e instanceof Error ? e.message : String(e),
       );
     } finally {
+      operationLock.current = false;
       setWorking(false);
     }
   };
@@ -226,13 +231,30 @@ export default function App() {
       void client.removeChannel(channel);
     };
   }, [verified]);
-  const command = async (kind: string, payload: object) => {
-    if (!client || !device) throw Error("انتظر مزامنة جهاز المقهى أولاً");
-    const { error } = await client
-      .from("commands")
-      .insert({ cafe_id: cafe, device_id: device, kind, payload });
-    if (error) throw error;
-    await load();
+  const command = async (kind: string, payload: Record<string, unknown>) => {
+    if (!client || !device || !session)
+      throw Error("انتظر مزامنة جهاز المقهى أولاً");
+    const signature = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      JSON.stringify({ kind, payload, cafe, user: session.user.id }),
+    );
+    const storageKey = "cafe-command-" + signature;
+    await queueCommand(
+      { storageKey, cafeId: cafe, deviceId: device, kind, payload },
+      {
+        storage: {
+          get: SecureStore.getItemAsync,
+          set: SecureStore.setItemAsync,
+          remove: SecureStore.deleteItemAsync,
+        },
+        newId: Crypto.randomUUID,
+        send: async (queued) => {
+          const { error } = await client.from("commands").insert(queued);
+          if (error && error.code !== "23505") throw error;
+        },
+        refresh: load,
+      },
+    );
     Alert.alert(
       "أُرسل الأمر",
       "بانتظار تطبيق جهاز المقهى؛ لا يعد منفذاً قبل تأكيده.",
@@ -574,7 +596,6 @@ export default function App() {
                         command("payment", {
                           customer_id: c.id,
                           amount: paymentAmount,
-                          request_id: "mobile-" + Date.now() + "-" + c.id,
                         }),
                       )
                     }

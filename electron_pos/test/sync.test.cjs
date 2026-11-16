@@ -50,3 +50,27 @@ test("lost cloud ACK retains local event and retries in order without losing ope
   ]);
   assert.equal(sync.status.state, "online");
 });
+
+test("bad cloud configuration or a service key never blocks local sales", (t) => {
+  const service = new Service(":memory:");
+  t.after(() => service.close());
+  const base = {
+    url: "http://invalid",
+    key: "key",
+    email: "pos",
+    password: "password",
+    cafe_id: "cafe",
+    device_id: "device",
+  };
+  assert.equal(new Sync(service, base).status.configured, false);
+  assert.equal(
+    new Sync(service, {
+      ...base,
+      url: "https://example.supabase.co",
+      key: "sb_secret_private",
+    }).status.configured,
+    false,
+  );
+  service.setup({ name: "Owner", pin: "123456" });
+  assert(service.login({ name: "Owner", pin: "123456" }).token);
+});

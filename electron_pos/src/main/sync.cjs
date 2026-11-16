@@ -18,12 +18,24 @@ class Sync {
       config.cafe_id &&
       config.device_id
     ) {
-      if (!config.url.startsWith("https://"))
-        throw Error("Supabase requires HTTPS");
-      this.client = createClient(config.url, config.key, {
-        auth: { persistSession: false, autoRefreshToken: true },
-      });
-      this.status.configured = true;
+      try {
+        if (!config.url.startsWith("https://"))
+          throw Error("Supabase requires HTTPS");
+        let role;
+        try {
+          role = JSON.parse(
+            Buffer.from(config.key.split(".")[1] || "", "base64url").toString(),
+          ).role;
+        } catch {}
+        if (config.key.startsWith("sb_secret_") || role === "service_role")
+          throw Error("A server key cannot be used by the POS");
+        this.client = createClient(config.url, config.key, {
+          auth: { persistSession: false, autoRefreshToken: true },
+        });
+        this.status.configured = true;
+      } catch {
+        this.status.error = "إعدادات السحابة غير صالحة؛ يستمر العمل محلياً";
+      }
     }
   }
   async tick() {

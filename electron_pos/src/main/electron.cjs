@@ -23,7 +23,18 @@ const methods = new Set([
   "expense",
   "report",
 ]);
-let service, window, sync, session, backupTimer;
+let service, window, sync, backupTimer;
+const pendingBackups = new Set();
+let quitting = false;
+function trackedBackup(directory) {
+  const pending = service.backup(directory);
+  pendingBackups.add(pending);
+  pending.then(
+    () => pendingBackups.delete(pending),
+    () => pendingBackups.delete(pending),
+  );
+  return pending;
+}
 async function receiptWindow(token, id, pdf = false) {
   const order = service.receipt(token, id);
   const w = new BrowserWindow({
@@ -93,7 +104,7 @@ app.whenReady().then(() => {
   sync.start();
   const dailyBackup = async () => {
     try {
-      await service.backup(join(app.getPath("userData"), "backups"));
+      await trackedBackup(join(app.getPath("userData"), "backups"));
     } catch {
       dialog.showErrorBox(
         "النسخ الاحتياطي",
@@ -147,7 +158,7 @@ app.whenReady().then(() => {
         });
         return {
           ok: true,
-          value: canceled ? null : await service.backup(filePaths[0]),
+          value: canceled ? null : await trackedBackup(filePaths[0]),
         };
       }
       if (method === "print" || method === "pdf")
@@ -155,6 +166,38 @@ app.whenReady().then(() => {
           ok: true,
           value: await receiptWindow(token, args.id, method === "pdf"),
         };
+      if (method === "reportPdf") {
+        const report = service.report(token, args);
+        const { filePath } = await dialog.showSaveDialog(window, {
+          defaultPath: `CafeSelection-Report-${report.period}.pdf`,
+          filters: [{ name: "PDF", extensions: ["pdf"] }],
+        });
+        if (!filePath) return { ok: true, value: false };
+        const pdfWindow = new BrowserWindow({
+          show: false,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+          },
+        });
+        try {
+          await pdfWindow.loadURL(
+            "data:text/html;charset=utf-8," +
+              encodeURIComponent(require("./report.cjs").reportHTML(report)),
+          );
+          writeFileSync(
+            filePath,
+            await pdfWindow.webContents.printToPDF({
+              pageSize: "A4",
+              printBackground: true,
+            }),
+          );
+        } finally {
+          pdfWindow.destroy();
+        }
+        return { ok: true, value: true };
+      }
       if (method === "excel") {
         const report = service.report(token, args);
         const { filePath } = await dialog.showSaveDialog(window, {
@@ -196,6 +239,13 @@ app.whenReady().then(() => {
               d.count,
             ]);
           sheet.columns.forEach((c) => (c.width = 21));
+          const products = book.addWorksheet("المنتجات", {
+            views: [{ rightToLeft: true }],
+          });
+          products.addRow(["المنتج", "الكمية", "إجمالي البيع"]);
+          for (const p of report.top)
+            products.addRow([p.name, p.quantity, p.total / 100]);
+          products.columns.forEach((c) => (c.width = 25));
           await book.xlsx.writeFile(filePath);
         }
         return { ok: true, value: !!filePath };
@@ -212,8 +262,14 @@ app.whenReady().then(() => {
   });
 });
 app.on("window-all-closed", () => app.quit());
-app.on("before-quit", () => {
+app.on("before-quit", (event) => {
+  if (quitting) return;
+  event.preventDefault();
   sync?.stop();
   clearInterval(backupTimer);
+  Promise.allSettled([...pendingBackups]).then(() => {
+    quitting = true;
+    service?.close();
+    app.quit();
+  });
 });
-app.on("quit", () => service?.close());

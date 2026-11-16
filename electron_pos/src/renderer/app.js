@@ -284,7 +284,10 @@ async function dashboard() {
         ["تسديد ديون", r.repaid],
         ["مبيعات على الحساب (غير محصلة)", r.credit],
       ].map(([l, v]) => row([l, money(v)])),
-    )}<p class="hint">الصافي = النقدي + تسديد الديون − المصاريف. ليس ربحاً محاسبياً نهائياً.</p><p class="hint">${state.pending} عملية تنتظر المزامنة. آخر اتصال: ${esc(info.sync?.last_success || "لم يتم بعد")}</p></div></div>`,
+    )}<p class="hint">الصافي = النقدي + تسديد الديون − المصاريف. ليس ربحاً محاسبياً نهائياً.</p><p class="hint">${state.pending} عملية تنتظر المزامنة. آخر اتصال: ${esc(info.sync?.last_success || "لم يتم بعد")}</p></div></div><div class="spacer"></div><div class="panel"><h2>المداخيل النقدية بالساعة · توقيت المغرب</h2>${table(
+      ["الساعة", "المبلغ"],
+      r.hourly.map((h) => row([esc(h.hour) + ":00", money(h.total)])),
+    )}</div>`,
   );
 }
 function orders() {
@@ -418,7 +421,7 @@ async function reports() {
   if (!filterDate) filterDate = state.business_day;
   const r = await call("report", { date: filterDate, monthly: reportMonthly });
   frame(
-    `${title("التقارير اليومية والشهرية", "الإيراد يُحسب في يوم التحصيل. كل المبالغ بالدرهم.")}<div class="row"><input id="report-date" type="date" value="${filterDate}" class="short"><select id="report-type" class="short"><option value="daily" ${!reportMonthly ? "selected" : ""}>يومي</option><option value="monthly" ${reportMonthly ? "selected" : ""}>شهري</option></select>${button("تحديث", null, "report-refresh", "gold")}${button("تصدير Excel", null, "excel")}</div>${stats(r)}<div class="panel">${table(
+    `${title("التقارير اليومية والشهرية", "الإيراد يُحسب في يوم التحصيل. كل المبالغ بالدرهم.")}<div class="row"><input id="report-date" type="date" value="${filterDate}" class="short"><select id="report-type" class="short"><option value="daily" ${!reportMonthly ? "selected" : ""}>يومي</option><option value="monthly" ${reportMonthly ? "selected" : ""}>شهري</option></select>${button("تحديث", null, "report-refresh", "gold")}${button("تصدير Excel", null, "excel")}${button("تصدير PDF", null, "report-pdf")}</div>${stats(r)}<div class="panel">${table(
       ["اليوم", "نقدي", "تسديد الديون", "المصاريف", "الصافي", "على الحساب"],
       r.days.map((d) =>
         row([
@@ -439,6 +442,11 @@ async function reports() {
     filterDate = document.getElementById("report-date").value;
     reportMonthly = document.getElementById("report-type").value === "monthly";
     await reports();
+  });
+  on("report-pdf", "click", async () => {
+    if (window.cafe)
+      await call("reportPdf", { date: filterDate, monthly: reportMonthly });
+    else window.print();
   });
   on("excel", "click", async () => {
     if (window.cafe) {

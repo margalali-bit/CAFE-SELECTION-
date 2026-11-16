@@ -60,10 +60,24 @@ app
     });
     if (!pdf.subarray(0, 4).equals(Buffer.from("%PDF")))
       throw Error("PDF was not generated");
+    service.setup({ name: "SmokeOwner", pin: "987654" });
+    const admin = service.login({ name: "SmokeOwner", pin: "987654" }).token;
+    const report = require("../src/main/report.cjs").reportHTML(
+      service.report(admin),
+    );
+    await receipt.loadURL(
+      "data:text/html;charset=utf-8," + encodeURIComponent(report),
+    );
+    const reportPdf = await receipt.webContents.printToPDF({
+      pageSize: "A4",
+      printBackground: true,
+    });
+    if (!reportPdf.subarray(0, 4).equals(Buffer.from("%PDF")))
+      throw Error("Report PDF was not generated");
     receipt.destroy();
     w.destroy();
     console.log(
-      "Native Electron: sandboxed renderer, SQLite and 80mm PDF passed",
+      "Native Electron: sandboxed renderer, SQLite, 80mm receipt PDF and A4 report PDF passed",
     );
     app.quit();
   })

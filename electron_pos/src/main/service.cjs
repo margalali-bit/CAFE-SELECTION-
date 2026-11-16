@@ -253,6 +253,14 @@ class Service {
     if (data.id && !old) throw Error("الحساب غير موجود");
     if (old?.role === "admin" && data.active === false)
       throw Error("لا يمكن تعطيل حساب المالك");
+    if (
+      old &&
+      data.active === false &&
+      this.db
+        .prepare("SELECT 1 FROM shifts WHERE user_id=? AND status='open'")
+        .get(id)
+    )
+      throw Error("أغلق وردية النادل قبل تعطيل حسابه");
     const salt = randomBytes(16).toString("hex"),
       hash = data.pin ? pinHash(data.pin, salt) : null;
     if (!old && !hash) throw Error("PIN مطلوب");
