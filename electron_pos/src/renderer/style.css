@@ -108,3 +108,17 @@ input {
 #android-app-content .text-2xl {
   font-size: 1.25rem;
 }
+@media print {
+  #printable-receipt {
+    background: white !important;
+    color: #111 !important;
+  }
+  #printable-receipt * {
+    background: transparent !important;
+    color: #111 !important;
+    border-color: #aaa !important;
+  }
+  #printable-receipt svg {
+    filter: grayscale(1) brightness(0);
+  }
+}

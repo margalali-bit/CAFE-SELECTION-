@@ -525,7 +525,8 @@ expose("openReceiptModal", async (id) => {
   document.getElementById("modal-content").append(bar);
 });
 expose("print", async () => {
-  if (window.cafe) await call("print", { id: uiState.lastReceiptOrder.id });
+  if (window.cafe && uiState.lastReceiptOrder?.id)
+    await call("print", { id: uiState.lastReceiptOrder.id });
   else window.print();
 });
 expose("saveReceiptPDF", async () =>
@@ -534,9 +535,12 @@ expose("saveReceiptPDF", async () =>
     : window.print(),
 );
 expose("confirmCloseShift", async () => {
-  await call("closeShift", { delivered: window._closingCashInput || "0" });
+  const shiftId = await call("closeShift", {
+    delivered: window._closingCashInput || "0",
+  });
   closeModal();
   await refresh();
+  actions.openShiftReportModal(shiftId);
   showToast("أغلقت الوردية وتنتظر تأكيد المالك");
 });
 expose("confirmShiftReceipt", async (id) => {

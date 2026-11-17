@@ -133,6 +133,10 @@ server.on("exit", () => rmSync(dir, { recursive: true, force: true }));
   await click("1", modal());
   await click("0", modal());
   await click("تأكيد إغلاق الوردية وعرض التقرير", modal());
+  await modal().getByText("تقرير نهاية الوردية", { exact: true }).waitFor();
+  await click("طباعة التقرير", modal());
+  assert.equal(await page.evaluate(() => window.__printCount), 3);
+  await click("إغلاق", modal());
   await click("خروج", desk());
   await page
     .locator("#login-account")
