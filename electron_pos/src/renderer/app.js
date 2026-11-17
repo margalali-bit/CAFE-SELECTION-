@@ -361,7 +361,7 @@ function addOwnerTools() {
 }
 function expose(name, fn) {
   actions[name] = fn;
-  window[name] = fn;
+  if (name !== "print") window[name] = fn;
 }
 expose("closeModal", closeModal);
 expose("setWorkspaceMode", (mode) => {

@@ -40,6 +40,10 @@ server.on("exit", () => rmSync(dir, { recursive: true, force: true }));
   };
   const desk = () => page.locator("#desktop-container"),
     modal = () => page.locator("#modal-content");
+  await page.addInitScript(() => {
+    window.__printCount = 0;
+    window.print = () => window.__printCount++;
+  });
   await page.goto("http://127.0.0.1:4174");
   await page.locator("#setup-name").fill("Owner");
   await page.locator("#setup-pin").fill("982761");
@@ -112,6 +116,10 @@ server.on("exit", () => rmSync(dir, { recursive: true, force: true }));
   await modal().getByText("تذكرة رقم:", { exact: false }).waitFor();
   assert((await modal().innerText()).includes("Selection Guest"));
   assert(!(await modal().innerText()).includes("1234"));
+  await click("طباعة 80mm", modal());
+  await click("حفظ التذكرة PDF", modal());
+  assert.equal(await page.evaluate(() => window.__printCount), 2);
+
   await click("إغلاق", modal());
   await click("المشروبات", desk());
   await click("أتاي مغربي بالنعناع 10.00 درهم", desk());
