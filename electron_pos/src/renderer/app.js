@@ -415,6 +415,8 @@ expose("submitPinLogin", async () => {
   if (!account) throw Error("اختر الحساب أولاً");
   const pin = uiState.pinInput;
   uiState.pinInput = "";
+  const field = document.getElementById("login-pin");
+  if (field) field.value = "";
   const session = await call("login", { name: account.name, pin });
   token = session.token;
   requestId = null;

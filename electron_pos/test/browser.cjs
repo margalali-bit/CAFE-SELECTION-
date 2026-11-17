@@ -82,6 +82,13 @@ server.on("exit", () => rmSync(dir, { recursive: true, force: true }));
   await page.evaluate(() =>
     document.getElementById("toast-container").replaceChildren(),
   );
+  const phoneCard = page
+    .locator("#android-app-content .grid-cols-2 > div")
+    .first();
+  assert(
+    (await phoneCard.boundingBox()).width > 140,
+    "Phone dashboard cards must remain readable inside the embedded frame",
+  );
   await page.screenshot({
     path: join(__dirname, "../../docs/html-owner-split.png"),
     fullPage: true,
@@ -129,7 +136,10 @@ server.on("exit", () => rmSync(dir, { recursive: true, force: true }));
   await click("الورديات", desk());
   await click("تأكيد الاستلام", desk());
   await click("التقرير الشهري", desk());
-  await desk().getByText("إجمالي مداخيل الشهر", { exact: false }).first().waitFor();
+  await desk()
+    .getByText("إجمالي مداخيل الشهر", { exact: false })
+    .first()
+    .waitFor();
   await page.setViewportSize({ width: 1024, height: 768 });
   assert(
     await page.evaluate(

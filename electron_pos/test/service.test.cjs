@@ -257,3 +257,38 @@ test("WiFi settings persist through restart and reach the receipt without exposi
   assert(!("pin_hash" in receipt));
   assert.throws(() => s.saveSettings(waiter, { wifi_ssid: "Other" }));
 });
+
+test("opening a v2 database preserves the existing owner and upgrades archive metadata", (t) => {
+  const SQLite = require("better-sqlite3"),
+    crypto = require("node:crypto");
+  const directory = mkdtempSync(join(tmpdir(), "cafe-migration-")),
+    path = join(directory, "old.sqlite");
+  const old = new SQLite(path),
+    salt = "legacy-owner-salt",
+    hash = crypto.scryptSync("654321", salt, 32).toString("hex");
+  old.exec(
+    "CREATE TABLE users(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,pin_hash TEXT NOT NULL,role TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,failures INTEGER NOT NULL DEFAULT 0,locked_until INTEGER NOT NULL DEFAULT 0)",
+  );
+  old
+    .prepare("INSERT INTO users(id,name,salt,pin_hash,role) VALUES(?,?,?,?,?)")
+    .run("old-owner", "Existing Owner", salt, hash, "admin");
+  old.close();
+  const service = new Service(path);
+  t.after(() => {
+    service.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+  assert.equal(
+    service.login({ name: "Existing Owner", pin: "654321" }).user.id,
+    "old-owner",
+  );
+  assert.equal(
+    service.db.prepare("SELECT pin_hash,archived FROM users").get().pin_hash,
+    hash,
+  );
+  assert.equal(
+    service.db.prepare("SELECT archived FROM users").get().archived,
+    0,
+  );
+  assert.throws(() => service.setup({ name: "Replacement", pin: "1111" }));
+});

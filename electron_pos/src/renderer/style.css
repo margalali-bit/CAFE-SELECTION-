@@ -1,3 +1,110 @@
 /* Integrations added to the supplied design. */
-.form-input{width:100%;background:#0d0d0d;border:1px solid #383838;border-radius:12px;color:#fff;padding:12px;outline:none}.form-input:focus{border-color:#D4AF37}button:focus-visible{outline:2px solid #E6C252;outline-offset:3px}#main-workspace{min-height:calc(100vh - 60px)}#desktop-container{max-height:calc(100vh - 60px)}#modal-content input[type=password]{-webkit-text-security:disc}input{user-select:text}@media print{body *{visibility:hidden}#printable-receipt,#printable-receipt *{visibility:visible}#printable-receipt{position:absolute;right:0;top:0;box-shadow:none;width:72mm}#modal-backdrop{position:static;background:#fff}}
-#printable-report{display:none}@page financial{size:A4;margin:15mm}@media print{#printable-report{display:block;page:financial;position:absolute;inset:0;width:100%;background:white;color:black;font-family:Cairo,sans-serif}#printable-report,#printable-report *{visibility:visible}#printable-report h1,#printable-report h2{font-size:22px;text-align:center;margin:16px}#printable-report p{margin:20px 0}#printable-report table{width:100%;border-collapse:collapse}#printable-report th,#printable-report td{border:1px solid #ccc;padding:12px;text-align:right}#printable-report thead{display:table-header-group}#printable-report tr{break-inside:avoid}}
+.form-input {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #383838;
+  border-radius: 12px;
+  color: #fff;
+  padding: 12px;
+  outline: none;
+}
+.form-input:focus {
+  border-color: #d4af37;
+}
+button:focus-visible {
+  outline: 2px solid #e6c252;
+  outline-offset: 3px;
+}
+#main-workspace {
+  min-height: calc(100vh - 60px);
+}
+#desktop-container {
+  max-height: calc(100vh - 60px);
+}
+#modal-content input[type="password"] {
+  -webkit-text-security: disc;
+}
+input {
+  user-select: text;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-receipt,
+  #printable-receipt * {
+    visibility: visible;
+  }
+  #printable-receipt {
+    position: absolute;
+    right: 0;
+    top: 0;
+    box-shadow: none;
+    width: 72mm;
+  }
+  #modal-backdrop {
+    position: static;
+    background: #fff;
+  }
+}
+#printable-report {
+  display: none;
+}
+@page financial {
+  size: A4;
+  margin: 15mm;
+}
+@media print {
+  #printable-report {
+    display: block;
+    page: financial;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: black;
+    font-family: Cairo, sans-serif;
+  }
+  #printable-report,
+  #printable-report * {
+    visibility: visible;
+  }
+  #printable-report h1,
+  #printable-report h2 {
+    font-size: 22px;
+    text-align: center;
+    margin: 16px;
+  }
+  #printable-report p {
+    margin: 20px 0;
+  }
+  #printable-report table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #printable-report th,
+  #printable-report td {
+    border: 1px solid #ccc;
+    padding: 12px;
+    text-align: right;
+  }
+  #printable-report thead {
+    display: table-header-group;
+  }
+  #printable-report tr {
+    break-inside: avoid;
+  }
+}
+/* The embedded phone has its own narrow viewport inside the desktop page. */
+#android-app-content .grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#android-app-content .grid-cols-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+#android-app-content .text-xl {
+  font-size: 1.2rem;
+}
+#android-app-content .text-2xl {
+  font-size: 1.25rem;
+}
