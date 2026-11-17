@@ -2,6 +2,7 @@ import "react-native-url-polyfill/auto";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
+  Image,
   Text,
   TextInput,
   Pressable,
@@ -10,6 +11,9 @@ import {
   Alert,
   AppState,
 } from "react-native";
+import { useFonts } from "expo-font";
+import { Cairo_400Regular, Cairo_700Bold } from "@expo-google-fonts/cairo";
+import { PlayfairDisplay_700Bold } from "@expo-google-fonts/playfair-display";
 import { createClient, Session } from "@supabase/supabase-js";
 import { queueCommand } from "./lib/commands";
 import * as Crypto from "expo-crypto";
@@ -96,6 +100,11 @@ function Button({
   );
 }
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Cairo_400Regular,
+    Cairo_700Bold,
+    PlayfairDisplay_700Bold,
+  });
   const [session, setSession] = useState<Session | null>(null),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -350,13 +359,25 @@ export default function App() {
       data?.expenses
         .filter((e) => e.business_day === day)
         .reduce((n, e) => n + e.amount, 0) || 0;
+  if (!fontsLoaded && !fontError)
+    return <View style={{ flex: 1, backgroundColor: "#0d0d0d" }} />;
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.brand}>Café Sélection</Text>
+      <Image
+        source={require("./assets/selection-icon.png")}
+        style={{
+          width: 118,
+          height: 118,
+          alignSelf: "center",
+          marginBottom: 8,
+        }}
+        accessibilityLabel="شعار café SELECTION TIZNIT"
+      />
+      <Text style={styles.brand}>café SELECTION</Text>
       <Text style={styles.sub}>TIZNIT · لوحة المالك</Text>
       {!configured ? (
         <View style={styles.card}>
@@ -374,7 +395,7 @@ export default function App() {
             value={email}
             onChangeText={setEmail}
             placeholder="البريد الإلكتروني"
-            placeholderTextColor="#aa9b88"
+            placeholderTextColor="#9ca3af"
             autoCapitalize="none"
             keyboardType="email-address"
           />
@@ -384,7 +405,7 @@ export default function App() {
             value={password}
             onChangeText={setPassword}
             placeholder="كلمة المرور"
-            placeholderTextColor="#aa9b88"
+            placeholderTextColor="#9ca3af"
             secureTextEntry
           />
           <Button title="دخول" disabled={working} onPress={login} />
@@ -412,7 +433,7 @@ export default function App() {
             value={code}
             onChangeText={setCode}
             placeholder="رمز من 6 أرقام"
-            placeholderTextColor="#aa9b88"
+            placeholderTextColor="#9ca3af"
             keyboardType="number-pad"
             maxLength={6}
           />
@@ -439,7 +460,7 @@ export default function App() {
               <Pressable
                 key={t}
                 onPress={() => setTab(t)}
-                style={[styles.tab, tab === t && { borderColor: "#d3b078" }]}
+                style={[styles.tab, tab === t && { borderColor: "#D4AF37" }]}
               >
                 <Text style={styles.text}>{t}</Text>
               </Pressable>
@@ -474,7 +495,7 @@ export default function App() {
                 value={reason}
                 onChangeText={setReason}
                 placeholder="سبب الإلغاء الإجباري"
-                placeholderTextColor="#aa9b88"
+                placeholderTextColor="#9ca3af"
               />
               {data?.orders.slice(0, 100).map((o) => (
                 <View key={o.id} style={styles.card}>
@@ -506,7 +527,7 @@ export default function App() {
                 value={price}
                 onChangeText={setPrice}
                 placeholder="ثمن جديد بالدرهم (اختياري)"
-                placeholderTextColor="#aa9b88"
+                placeholderTextColor="#9ca3af"
                 keyboardType="decimal-pad"
               />
               {data?.products.map((p) => (
@@ -577,7 +598,7 @@ export default function App() {
                 value={paymentAmount}
                 onChangeText={setPaymentAmount}
                 placeholder="المبلغ المقبوض بالدرهم"
-                placeholderTextColor="#aa9b88"
+                placeholderTextColor="#9ca3af"
                 keyboardType="decimal-pad"
               />
               {data?.customers.map((c) => (
@@ -652,56 +673,77 @@ export default function App() {
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#171411" },
+  screen: { flex: 1, backgroundColor: "#0d0d0d" },
   container: { padding: 22, paddingTop: 60, paddingBottom: 50 },
   brand: {
     fontSize: 32,
-    fontFamily: "serif",
-    color: "#d3b078",
+    fontFamily: "PlayfairDisplay_700Bold",
+    color: "#D4AF37",
     textAlign: "center",
   },
-  sub: { color: "#aa9b88", textAlign: "center", marginBottom: 28 },
+  sub: {
+    fontFamily: "Cairo_400Regular",
+    color: "#9ca3af",
+    textAlign: "center",
+    marginBottom: 28,
+  },
   card: {
-    backgroundColor: "#27211b",
+    backgroundColor: "#191919",
     borderWidth: 1,
-    borderColor: "#44372a",
+    borderColor: "#292929",
     borderRadius: 18,
     padding: 20,
     marginVertical: 8,
   },
   title: {
+    fontFamily: "Cairo_700Bold",
     fontSize: 20,
-    color: "#f5eee5",
+    color: "#f3f4f6",
     textAlign: "right",
     marginBottom: 12,
   },
-  text: { fontSize: 15, color: "#eee3d4", textAlign: "right", lineHeight: 26 },
+  text: {
+    fontFamily: "Cairo_400Regular",
+    fontSize: 15,
+    color: "#e5e7eb",
+    textAlign: "right",
+    lineHeight: 26,
+  },
   status: {
-    color: "#aa9b88",
+    fontFamily: "Cairo_400Regular",
+    color: "#9ca3af",
     textAlign: "right",
     fontSize: 12,
     lineHeight: 21,
     marginVertical: 12,
   },
-  value: { fontSize: 29, color: "#d3b078", textAlign: "right", marginTop: 10 },
+  value: {
+    fontFamily: "Cairo_700Bold",
+    fontSize: 29,
+    color: "#D4AF37",
+    textAlign: "right",
+    marginTop: 10,
+  },
   button: {
-    backgroundColor: "#d3b078",
+    backgroundColor: "#D4AF37",
     padding: 15,
     borderRadius: 12,
     marginTop: 12,
   },
   buttonText: {
+    fontFamily: "Cairo_700Bold",
     color: "#211a13",
     textAlign: "center",
     fontSize: 16,
     fontWeight: "600",
   },
   input: {
+    fontFamily: "Cairo_400Regular",
     color: "#fff",
-    backgroundColor: "#171411",
+    backgroundColor: "#0d0d0d",
     padding: 14,
     borderWidth: 1,
-    borderColor: "#564536",
+    borderColor: "#383838",
     borderRadius: 10,
     marginVertical: 8,
     textAlign: "right",
@@ -715,7 +757,7 @@ const styles = StyleSheet.create({
   tab: {
     padding: 10,
     borderWidth: 1,
-    borderColor: "#44372a",
+    borderColor: "#292929",
     borderRadius: 10,
   },
 });

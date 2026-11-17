@@ -5,14 +5,253 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'"
+      content="default-src 'self';script-src 'self';style-src 'self';font-src 'self';img-src 'self' data:;connect-src 'self'"
     />
-    <title>Café Sélection · تيزنيت</title>
+    <title>Café Sélection · Tiznit</title>
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <link rel="stylesheet" href="assets/fontawesome/css/all.min.css" />
+    <link rel="stylesheet" href="design.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
-    <div id="app"></div>
-    <div id="toast" role="status" hidden></div>
+  <body class="min-h-screen flex flex-col overflow-x-hidden">
+    <!-- TOP DEMO ENVIRONMENT SWITCHER & SYNC STATUS BAR -->
+    <header
+      class="bg-charcoal-950 border-b border-charcoal-700 px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-40 sticky top-0"
+    >
+      <div class="flex items-center gap-3">
+        <!-- Official Brand Logo SVG -->
+        <div
+          class="w-10 h-10 rounded-xl bg-black border border-gold-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.2)] p-1"
+        >
+          <svg
+            class="w-full h-full"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient
+                id="headerGoldGrad"
+                x1="20"
+                y1="10"
+                x2="80"
+                y2="90"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#FFF3C4" />
+                <stop offset="35%" stop-color="#E6C252" />
+                <stop offset="70%" stop-color="#C59B27" />
+                <stop offset="100%" stop-color="#8A6B12" />
+              </linearGradient>
+            </defs>
+            <!-- Flowing S Ribbon -->
+            <path
+              d="M68 18C52 10 34 16 33 29C32 42 69 44 69 61C69 75 53 83 36 81C25 79 19 71 21 60C22 51 31 45 45 45"
+              stroke="url(#headerGoldGrad)"
+              stroke-width="5.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M62 24C53 21 46 25 46 31C46 36 52 38 56 38"
+              stroke="url(#headerGoldGrad)"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            />
+            <!-- Coffee Cup Inside Lower Loop -->
+            <path
+              d="M31 53H61C61 67 54 75 46 75C38 75 31 67 31 53Z"
+              stroke="url(#headerGoldGrad)"
+              stroke-width="3.2"
+              fill="rgba(212,175,55,0.1)"
+            />
+            <!-- Cup Handle -->
+            <path
+              d="M61 56H66C69.5 56 71.5 58.5 71.5 61.5C71.5 64.5 69.5 67 66 67H60"
+              stroke="url(#headerGoldGrad)"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <!-- Swirl Under Cup -->
+            <path
+              d="M27 51C22 60 26 73 39 79L44 85L46 79"
+              stroke="url(#headerGoldGrad)"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <!-- 4-Point Star on Cup -->
+            <path
+              d="M46 58L48 62.5L52.5 64.5L48 66.5L46 71L44 66.5L39.5 64.5L44 62.5L46 58Z"
+              fill="url(#headerGoldGrad)"
+            />
+            <!-- Sparkle Star at Top Tip of S -->
+            <path
+              d="M70 8L71.8 14.2L78 16L71.8 17.8L70 24L68.2 17.8L62 16L68.2 14.2L70 8Z"
+              fill="#FFF8DC"
+            />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span
+              class="font-serif font-bold tracking-wider text-sm sm:text-base gold-gradient-text"
+              >café SELECTION</span
+            >
+            <span
+              class="text-[10px] tracking-widest text-gold-400/80 uppercase border border-gold-500/30 px-1.5 py-0.5 rounded"
+              >TIZNIT</span
+            >
+          </div>
+          <div class="flex items-center gap-2 text-[11px] text-gray-400">
+            <span
+              id="sync-indicator"
+              class="inline-flex items-center gap-1 text-emerald-400"
+            >
+              <span
+                class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+              ></span>
+              محلي · جارٍ فحص المزامنة
+            </span>
+            <span>•</span>
+            <span id="business-day-label">اليوم التجاري: --</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- View Mode Switcher (Desktop POS vs Owner Android App vs Split View) -->
+      <div
+        class="flex items-center bg-charcoal-800 p-1 rounded-xl border border-charcoal-700"
+      >
+        <button
+          onclick="setWorkspaceMode('desktop')"
+          id="mode-btn-desktop"
+          class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 bg-gold-500 text-charcoal-950"
+        >
+          <i class="fa-solid fa-desktop"></i>
+          <span>شاشة المقهى (POS)</span>
+        </button>
+        <button
+          onclick="setWorkspaceMode('android')"
+          id="mode-btn-android"
+          class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 text-gray-300 hover:text-white"
+        >
+          <i class="fa-brands fa-android text-emerald-400"></i>
+          <span>معاينة الهاتف</span>
+        </button>
+        <button
+          onclick="setWorkspaceMode('split')"
+          id="mode-btn-split"
+          class="hidden xl:flex px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition items-center gap-1.5 text-gray-300 hover:text-white"
+        >
+          <i class="fa-solid fa-columns"></i>
+          <span>عرض مزدوج حي</span>
+        </button>
+      </div>
+
+      <!-- Quick Tools: Offline Toggle & Reset Demo -->
+      <div class="flex items-center gap-2">
+        <button
+          onclick="toggleFullScreen()"
+          class="px-3 py-2 rounded-xl border border-charcoal-600 text-xs"
+        >
+          ملء الشاشة
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN WORKSPACE CONTAINER -->
+    <main
+      id="main-workspace"
+      class="flex-1 flex flex-col xl:flex-row overflow-hidden"
+    >
+      <!-- =====================================================================
+         1. DESKTOP POS ENVIRONMENT (شاشة لمس المقهى)
+    ====================================================================== -->
+      <section
+        id="desktop-container"
+        class="flex-1 flex flex-col bg-charcoal-900 min-h-[calc(100vh-56px)] overflow-y-auto"
+      >
+        <!-- Content injected dynamically by JS (Login Screen / Waiter POS / Owner Desktop Dashboard) -->
+      </section>
+
+      <!-- =====================================================================
+         2. OWNER ANDROID MOBILE COMPANION (تطبيق المالك Android)
+    ====================================================================== -->
+      <aside
+        id="android-container"
+        class="hidden bg-charcoal-950 border-r border-charcoal-700 p-2 sm:p-4 flex-col items-center justify-center min-h-[calc(100vh-56px)] w-full"
+      >
+        <div class="text-center mb-2">
+          <span
+            class="text-xs text-gold-400 bg-gold-500/10 border border-gold-500/30 px-3 py-1 rounded-full"
+          >
+            <i class="fa-brands fa-android ml-1"></i> معاينة واجهة المالك —
+            تتطلب تسجيل دخول المالك
+          </span>
+        </div>
+        <!-- Realistic Responsive Android Device Frame -->
+        <div
+          class="android-frame w-full max-w-[430px] h-[calc(100vh-115px)] min-h-[580px] max-h-[820px] flex flex-col relative"
+        >
+          <!-- Android Status Bar -->
+          <div
+            class="bg-charcoal-950 px-5 py-2 flex items-center justify-between text-[11px] text-gray-400 border-b border-charcoal-800 shrink-0"
+          >
+            <span id="android-clock" class="font-semibold text-gray-200"
+              >10:57</span
+            >
+            <div class="w-20 h-3.5 bg-black rounded-full mx-auto"></div>
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-signal text-[10px]"></i>
+              <i class="fa-solid fa-wifi text-[10px]"></i>
+              <i
+                class="fa-solid fa-battery-three-quarters text-emerald-400"
+              ></i>
+            </div>
+          </div>
+          <!-- Android App Content -->
+          <div
+            id="android-app-content"
+            class="flex-1 flex flex-col overflow-hidden bg-charcoal-900 relative"
+          >
+            <!-- Injected dynamically -->
+          </div>
+          <!-- Android Heads-up Banner Container -->
+          <div
+            id="android-heads-up-container"
+            class="absolute top-10 left-3 right-3 z-50 flex flex-col gap-2 pointer-events-none"
+          ></div>
+          <!-- Android Navigation Gesture Pill -->
+          <div
+            class="bg-charcoal-950 py-1.5 flex justify-center border-t border-charcoal-800 shrink-0"
+          >
+            <div class="w-28 h-1 bg-charcoal-600 rounded-full"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- GLOBAL TOAST NOTIFICATION CONTAINER -->
+    <div
+      id="toast-container"
+      class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 pointer-events-none"
+    ></div>
+
+    <!-- GLOBAL MODAL BACKDROP -->
+    <div
+      id="modal-backdrop"
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4"
+    >
+      <div
+        id="modal-content"
+        class="bg-charcoal-850 border border-charcoal-600 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+      >
+        <!-- Dynamic Modal Inner HTML -->
+      </div>
+    </div>
+
+    <script src="design-views.js"></script>
+    <script src="catalog.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

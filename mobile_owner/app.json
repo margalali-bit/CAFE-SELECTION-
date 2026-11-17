@@ -2,14 +2,25 @@
   "expo": {
     "name": "Café Sélection · المالك",
     "slug": "cafe-selection-owner",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "ma.cafeselection.owner",
-      "permissions": ["POST_NOTIFICATIONS"]
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ],
+      "versionCode": 3
     },
-    "plugins": ["expo-secure-store", "expo-notifications"],
-    "extra": { "eas": { "projectId": "" } }
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    },
+    "icon": "./assets/selection-icon.png"
   }
 }

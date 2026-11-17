@@ -15,6 +15,8 @@ const methods = new Set([
   "logout",
   "state",
   "saveCategory",
+  "removeCategory",
+  "archiveUser",
   "saveProduct",
   "saveUser",
   "saveSettings",
@@ -48,6 +50,7 @@ const server = http.createServer(async (req, res) => {
       if (method === "info")
         value = {
           setup: !service.db.prepare("SELECT 1 FROM users LIMIT 1").get(),
+          ...service.loginOptions(),
           sync: { configured: false, state: "offline" },
           version: "0.2.0-preview",
         };
@@ -63,13 +66,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === "GET") {
-      const path = {
-        "/": "index.html",
-        "/app.js": "app.js",
-        "/style.css": "style.css",
-        "/assets/teapot.svg": "assets/teapot.svg",
-      }[req.url];
-      if (!path) {
+      const requested = decodeURIComponent(req.url.split("?")[0]);
+      const path = requested === "/" ? "index.html" : requested.slice(1);
+      const allowed =
+        /^(?:index\.html|app\.js|design-views\.js|catalog\.js|style\.css|design\.css|assets\/[A-Za-z0-9_.\/-]+)$/.test(
+          path,
+        ) && !path.split("/").includes("..");
+      if (!allowed) {
         res.writeHead(404);
         res.end();
         return;
@@ -81,6 +84,9 @@ const server = http.createServer(async (req, res) => {
           ".js": "text/javascript;charset=utf-8",
           ".css": "text/css",
           ".svg": "image/svg+xml",
+          ".woff2": "font/woff2",
+          ".woff": "font/woff",
+          ".ttf": "font/ttf",
         }[extname(path)] || "text/html;charset=utf-8",
       );
       res.end(readFileSync(join(__dirname, "../renderer", path)));

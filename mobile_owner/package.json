@@ -1,6 +1,6 @@
 {
   "name": "cafe-selection-owner",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -10,10 +10,13 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@expo-google-fonts/cairo": "^0.4.2",
+    "@expo-google-fonts/playfair-display": "^0.4.2",
     "@supabase/supabase-js": "^2.80.0",
     "expo": "~54.0.0",
     "expo-constants": "~18.0.0",
     "expo-crypto": "~15.0.7",
+    "expo-font": "~14.0.9",
     "expo-notifications": "~0.32.0",
     "expo-secure-store": "~15.0.7",
     "react": "19.1.0",

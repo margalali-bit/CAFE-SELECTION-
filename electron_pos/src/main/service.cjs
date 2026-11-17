@@ -75,6 +75,10 @@ class Service {
       CREATE INDEX IF NOT EXISTS order_day ON orders(business_day,status);
       CREATE INDEX IF NOT EXISTS expense_day ON expenses(business_day);
     `);
+    if (!this.db.pragma("table_info(users)").some((c) => c.name === "archived"))
+      this.db.exec(
+        "ALTER TABLE users ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
+      );
     const put = this.db.prepare("INSERT OR IGNORE INTO meta VALUES(?,?)");
     put.run("device_id", randomUUID());
     put.run(
@@ -92,10 +96,14 @@ class Service {
     return this.clock().toISOString();
   }
   settings() {
-    return JSON.parse(
-      this.db.prepare("SELECT value FROM meta WHERE key='settings'").get()
-        .value,
-    );
+    return {
+      wifi_ssid: "",
+      wifi_password: "",
+      ...JSON.parse(
+        this.db.prepare("SELECT value FROM meta WHERE key='settings'").get()
+          .value,
+      ),
+    };
   }
   day() {
     return businessDay(this.now(), this.settings().day_start);
@@ -185,6 +193,20 @@ class Service {
     this.db
       .prepare("UPDATE users SET failures=0,locked_until=0 WHERE id=?")
       .run(u.id);
+    if (u.role === "waiter") {
+      const active = this.db
+        .prepare(
+          "SELECT user_id FROM shifts WHERE status='open' AND user_id<>?",
+        )
+        .get(u.id);
+      if (
+        active &&
+        !this.db
+          .prepare("SELECT 1 FROM shifts WHERE status='open' AND user_id=?")
+          .get(u.id)
+      )
+        throw Error("وردية نادل آخر ما زالت مفتوحة؛ أغلقها أولاً");
+    }
     this.audit(u, "login", u.id);
     const token = randomBytes(32).toString("hex");
     this.sessions.set(token, { id: u.id, expires: now + 8 * 3600000 });
@@ -193,15 +215,70 @@ class Service {
   logout(token) {
     this.sessions.delete(token);
   }
+  loginOptions() {
+    return {
+      business_day: this.day(),
+      accounts: this.db
+        .prepare(
+          "SELECT id,name,role FROM users WHERE active=1 AND archived=0 ORDER BY role,name",
+        )
+        .all(),
+      active_waiter:
+        this.db
+          .prepare("SELECT user_id FROM shifts WHERE status='open' LIMIT 1")
+          .get()?.user_id || null,
+    };
+  }
   saveCategory(token, data) {
     const u = this.user(token, "admin"),
-      id = randomUUID();
-    this.mutate(u, "category.created", id, () =>
-      this.db
-        .prepare("INSERT INTO categories VALUES(?,?)")
-        .run(id, name(data.name)),
-    );
+      id = data.id || randomUUID();
+    this.mutate(u, "category.saved", id, () => {
+      if (data.id) {
+        if (
+          !this.db
+            .prepare("UPDATE categories SET name=? WHERE id=?")
+            .run(name(data.name), id).changes
+        )
+          throw Error("القسم غير موجود");
+      } else
+        this.db
+          .prepare("INSERT INTO categories VALUES(?,?)")
+          .run(id, name(data.name));
+    });
     return id;
+  }
+  removeCategory(token, data) {
+    const u = this.user(token, "admin");
+    this.mutate(u, "category.removed", data.id, () => {
+      if (
+        this.db
+          .prepare("SELECT 1 FROM products WHERE category_id=?")
+          .get(data.id)
+      )
+        throw Error("انقل منتجات القسم قبل حذفه");
+      this.db.prepare("DELETE FROM categories WHERE id=?").run(data.id);
+    });
+  }
+  archiveUser(token, data) {
+    const u = this.user(token, "admin");
+    const account = this.db
+      .prepare("SELECT role FROM users WHERE id=?")
+      .get(data.id);
+    if (!account || account.role !== "waiter")
+      throw Error("لا يمكن أرشفة المالك");
+    if (
+      this.db
+        .prepare("SELECT 1 FROM shifts WHERE user_id=? AND status<>'confirmed'")
+        .get(data.id)
+    )
+      throw Error("أغلق ورديات النادل وأكد الاستلام قبل الأرشفة");
+    this.mutate(u, "user.archived", data.id, () =>
+      this.db
+        .prepare("UPDATE users SET active=0,archived=1 WHERE id=?")
+        .run(data.id),
+    );
+    for (const [t, s] of this.sessions)
+      if (s.id === data.id) this.sessions.delete(t);
   }
   saveProduct(token, data) {
     const u = this.user(token, "admin");
@@ -257,10 +334,10 @@ class Service {
       old &&
       data.active === false &&
       this.db
-        .prepare("SELECT 1 FROM shifts WHERE user_id=? AND status='open'")
+        .prepare("SELECT 1 FROM shifts WHERE user_id=? AND status<>'confirmed'")
         .get(id)
     )
-      throw Error("أغلق وردية النادل قبل تعطيل حسابه");
+      throw Error("أغلق وردية النادل وأكد استلامها قبل تعطيل حسابه");
     const salt = randomBytes(16).toString("hex"),
       hash = data.pin ? pinHash(data.pin, salt) : null;
     if (!old && !hash) throw Error("PIN مطلوب");
@@ -303,6 +380,8 @@ class Service {
             "waiter_add_customers",
             "waiter_record_payments",
             "day_start",
+            "wifi_ssid",
+            "wifi_password",
           ].includes(k),
       )
     )
@@ -315,6 +394,9 @@ class Service {
       s.default_credit_limit < 0
     )
       throw Error("إعدادات غير صالحة");
+    for (const key of ["wifi_ssid", "wifi_password"])
+      if (typeof s[key] !== "string" || s[key].length > 128)
+        throw Error("بيانات شبكة الضيوف غير صالحة");
     for (const key of [
       "debts_enabled",
       "waiter_add_customers",
@@ -415,6 +497,12 @@ class Service {
           )
             throw Error("تجاوز حد الدين أو الزبون غير موجود");
         }
+        if (
+          this.db
+            .prepare("SELECT 1 FROM shifts WHERE status='open' AND user_id<>?")
+            .get(u.id)
+        )
+          throw Error("وردية نادل آخر ما زالت مفتوحة");
         let shift = this.db
           .prepare("SELECT * FROM shifts WHERE user_id=? AND status='open'")
           .get(u.id);
@@ -471,6 +559,8 @@ class Service {
       throw Error("الطلب غير متاح");
     return {
       ...o,
+      wifi_ssid: this.settings().wifi_ssid,
+      wifi_password: this.settings().wifi_password,
       items: this.db
         .prepare("SELECT * FROM order_items WHERE order_id=?")
         .all(id),
@@ -703,7 +793,9 @@ class Service {
         .prepare("SELECT * FROM categories ORDER BY name")
         .all(),
       products: this.db.prepare("SELECT * FROM products ORDER BY name").all(),
-      users: this.db.prepare("SELECT id,name,role,active FROM users").all(),
+      users: this.db
+        .prepare("SELECT id,name,role,active,archived FROM users")
+        .all(),
       orders: this.db
         .prepare("SELECT * FROM orders ORDER BY created_at DESC")
         .all(),
@@ -743,11 +835,18 @@ class Service {
       business_day: s.business_day,
       settings: {
         debts_enabled: s.settings.debts_enabled,
+        day_start: s.settings.day_start,
+        wifi_ssid: s.settings.wifi_ssid,
+        wifi_password: s.settings.wifi_password,
         waiter_add_customers: s.settings.waiter_add_customers,
         waiter_record_payments: s.settings.waiter_record_payments,
       },
       categories: s.categories,
-      products: s.products.filter((p) => p.available),
+      products: s.products,
+      users: [u],
+      order_items: s.order_items.filter((i) =>
+        s.orders.some((o) => o.id === i.order_id && o.user_id === u.id),
+      ),
       orders: s.orders.filter((o) => o.user_id === u.id),
       shifts: s.shifts.filter((s) => s.user_id === u.id),
       customers: s.settings.debts_enabled ? s.customers : [],
