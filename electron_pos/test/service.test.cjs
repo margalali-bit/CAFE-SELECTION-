@@ -200,3 +200,95 @@ test("remote commands idempotent and atomic, backups preserve all rows", async (
     copy.close();
   }
 });
+
+test("HTML account selector never exposes PIN; global shift guard is enforced beyond the UI", (t) => {
+  const { s, admin, waiter, order } = fixture(t);
+  s.saveUser(admin, { name: "Second", pin: "5678" });
+  const second = s.login({ name: "Second", pin: "5678" }).token;
+  order();
+  assert.throws(
+    () => s.login({ name: "Second", pin: "5678" }),
+    /وردية نادل آخر/,
+  );
+  const p = s.state(admin).products[0];
+  assert.throws(
+    () =>
+      s.checkout(second, {
+        request_id: "other-request",
+        payment: "cash",
+        items: [{ product_id: p.id, quantity: 1, version: p.version }],
+      }),
+    /وردية نادل آخر/,
+  );
+  const publicData = JSON.stringify(s.loginOptions());
+  assert(!publicData.includes("pin_hash"));
+  assert(!publicData.includes("salt"));
+  assert(!publicData.includes("5678"));
+  assert(s.state(waiter).order_items.length);
+  s.closeShift(waiter, { delivered: "24.70" });
+  assert(s.login({ name: "Second", pin: "5678" }).token);
+});
+test("reference CRUD edits categories and products and archives staff without erasing sales", (t) => {
+  const { s, admin, waiterId, category, product, order } = fixture(t);
+  const o = order();
+  s.saveCategory(admin, { id: category, name: "اسم جديد" });
+  assert.equal(s.state(admin).categories[0].name, "اسم جديد");
+  assert.throws(() => s.removeCategory(admin, { id: category }));
+  assert.throws(() => s.archiveUser(admin, { id: waiterId }));
+  const shift = s.state(admin).shifts[0];
+  const waiter = s.login({ name: "Waiter", pin: "1234" }).token;
+  s.closeShift(waiter, { delivered: "24.70" });
+  assert.throws(() => s.archiveUser(admin, { id: waiterId }));
+  s.confirmShift(admin, { id: shift.id });
+  s.archiveUser(admin, { id: waiterId });
+  assert(!s.loginOptions().accounts.some((u) => u.id === waiterId));
+  assert.equal(s.receipt(admin, o.id).waiter, "Waiter");
+  assert.equal(s.report(admin).revenue, 2470);
+});
+test("WiFi settings persist through restart and reach the receipt without exposing user PIN", (t) => {
+  const { s, admin, waiter, order } = fixture(t);
+  s.saveSettings(admin, {
+    wifi_ssid: "Selection Guest",
+    wifi_password: "guest-code",
+  });
+  const receipt = s.receipt(waiter, order().id);
+  assert.equal(receipt.wifi_ssid, "Selection Guest");
+  assert.equal(receipt.wifi_password, "guest-code");
+  assert(!("pin_hash" in receipt));
+  assert.throws(() => s.saveSettings(waiter, { wifi_ssid: "Other" }));
+});
+
+test("opening a v2 database preserves the existing owner and upgrades archive metadata", (t) => {
+  const SQLite = require("better-sqlite3"),
+    crypto = require("node:crypto");
+  const directory = mkdtempSync(join(tmpdir(), "cafe-migration-")),
+    path = join(directory, "old.sqlite");
+  const old = new SQLite(path),
+    salt = "legacy-owner-salt",
+    hash = crypto.scryptSync("654321", salt, 32).toString("hex");
+  old.exec(
+    "CREATE TABLE users(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,pin_hash TEXT NOT NULL,role TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,failures INTEGER NOT NULL DEFAULT 0,locked_until INTEGER NOT NULL DEFAULT 0)",
+  );
+  old
+    .prepare("INSERT INTO users(id,name,salt,pin_hash,role) VALUES(?,?,?,?,?)")
+    .run("old-owner", "Existing Owner", salt, hash, "admin");
+  old.close();
+  const service = new Service(path);
+  t.after(() => {
+    service.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+  assert.equal(
+    service.login({ name: "Existing Owner", pin: "654321" }).user.id,
+    "old-owner",
+  );
+  assert.equal(
+    service.db.prepare("SELECT pin_hash,archived FROM users").get().pin_hash,
+    hash,
+  );
+  assert.equal(
+    service.db.prepare("SELECT archived FROM users").get().archived,
+    0,
+  );
+  assert.throws(() => service.setup({ name: "Replacement", pin: "1111" }));
+});

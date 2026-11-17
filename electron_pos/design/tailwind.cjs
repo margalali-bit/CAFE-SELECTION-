@@ -1,0 +1,1 @@
+module.exports={content:['./src/renderer/**/*.{html,js}'],theme:{extend:{fontFamily:{sans:['Cairo','sans-serif'],serif:['Playfair Display','serif']},colors:{charcoal:{950:'#0d0d0d',900:'#141414',850:'#191919',800:'#1e1e1e',700:'#292929',600:'#383838'},gold:{300:'#F3E5AB',400:'#E6C252',500:'#D4AF37',600:'#B59021',700:'#8A6B12'}}}},plugins:[]};

@@ -10,6 +10,8 @@ const methods = new Set([
   "logout",
   "state",
   "saveCategory",
+  "removeCategory",
+  "archiveUser",
   "saveProduct",
   "saveUser",
   "saveSettings",
@@ -142,12 +144,12 @@ app.whenReady().then(() => {
           ok: true,
           value: {
             setup: !service.db.prepare("SELECT 1 FROM users LIMIT 1").get(),
+            ...service.loginOptions(),
             sync: sync.status,
             version: app.getVersion(),
           },
         };
       if (method === "kiosk") {
-        service.user(token);
         window.setFullScreen(!window.isFullScreen());
         return { ok: true, value: true };
       }

@@ -1,438 +1,124 @@
-:root {
-  --bg: #171411;
-  --panel: #241f1a;
-  --line: #3c3228;
-  --gold: #d3b078;
-  --text: #f5eee5;
-  --muted: #ab9f91;
-  --danger: #e29485;
-  --green: #a6c5a2;
-}
-* {
-  box-sizing: border-box;
-}
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font:
-    16px "Segoe UI",
-    Tahoma,
-    Arial;
-}
-button,
-input,
-select {
-  font: inherit;
-}
-button {
-  cursor: pointer;
-  background: #332a21;
-  border: 1px solid var(--line);
+/* Integrations added to the supplied design. */
+.form-input {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #383838;
   border-radius: 12px;
-  padding: 14px 20px;
-  color: var(--text);
-  min-height: 50px;
-}
-button:hover {
-  border-color: var(--gold);
-  background: #453729;
-}
-button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.gold,
-button.active {
-  background: var(--gold);
-  color: #221b14;
-  border-color: var(--gold);
-}
-.danger {
-  color: var(--danger);
-}
-h1,
-h2,
-h3,
-p {
-  margin: 0;
-}
-h1 {
-  font-size: 27px;
-}
-h2 {
-  font-size: 20px;
-}
-small,
-.muted {
-  color: var(--muted);
-}
-small {
-  font-size: 13px;
-}
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 23px 3%;
-  border-bottom: 1px solid var(--line);
-  gap: 18px;
-}
-.brand {
-  font: 700 28px Georgia;
-  direction: ltr;
-  color: var(--gold);
-}
-.brand small {
-  display: block;
-  font: 11px "Segoe UI";
-  letter-spacing: 4px;
-  margin-top: 7px;
-}
-.badge {
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.shell {
-  display: grid;
-  grid-template-columns: 205px 1fr;
-  min-height: calc(100vh - 95px);
-}
-nav {
-  border-left: 1px solid var(--line);
-  padding: 24px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-nav button {
-  text-align: right;
-  background: none;
-  border-color: transparent;
-}
-.content {
-  padding: 28px;
-  min-width: 0;
-}
-.between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.section-title {
-  margin-bottom: 24px;
-}
-.section-title p {
-  margin-top: 8px;
-  color: var(--muted);
-}
-.panel {
-  border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: 18px;
-  padding: 22px;
-}
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin: 22px 0;
-}
-.stat {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--panel);
-  padding: 22px;
-}
-.stat b {
-  font-size: 27px;
-  display: block;
-  margin-top: 13px;
-  color: var(--gold);
-}
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-.pos {
-  display: grid;
-  grid-template-columns: 1fr 355px;
-  gap: 22px;
-}
-.products {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
-}
-.product {
-  min-height: 160px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: linear-gradient(135deg, #31291f, #241f1a);
-}
-.product .symbol {
-  font-size: 36px;
-  color: var(--gold);
-}
-.price {
-  color: var(--gold);
-}
-.filters {
-  display: flex;
-  gap: 8px;
-  margin: 18px 0;
-  flex-wrap: wrap;
-}
-.cart-item {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line);
-}
-.qty {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  margin-top: 10px;
-}
-.qty button {
-  padding: 4px 14px;
-  min-height: 40px;
-}
-.total {
-  font-size: 26px;
-  color: var(--gold);
-  padding: 24px 0;
-}
-.full {
-  width: 100%;
-  margin-top: 10px;
-}
-.empty {
-  padding: 45px 16px;
-  text-align: center;
-  color: var(--muted);
-}
-input,
-select {
-  background: #191512;
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  color: #fff;
   padding: 12px;
-  width: 100%;
-  min-height: 50px;
+  outline: none;
 }
-input:focus,
-select:focus {
-  outline: 1px solid var(--gold);
+.form-input:focus {
+  border-color: #d4af37;
 }
-input[type="checkbox"] {
-  width: 24px;
-  min-height: 24px;
-  accent-color: var(--gold);
+button:focus-visible {
+  outline: 2px solid #e6c252;
+  outline-offset: 3px;
 }
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  color: var(--muted);
-  font-size: 14px;
+#main-workspace {
+  min-height: calc(100vh - 60px);
 }
-label.check {
-  flex-direction: row;
-  align-items: center;
+#desktop-container {
+  max-height: calc(100vh - 60px);
 }
-form {
-  display: grid;
-  gap: 16px;
+#modal-content input[type="password"] {
+  -webkit-text-security: disc;
 }
-form.inline {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  align-items: end;
-  margin: 20px 0;
-}
-.scroll {
-  overflow: auto;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  white-space: nowrap;
-  font-size: 14px;
-}
-td,
-th {
-  text-align: right;
-  border-bottom: 1px solid var(--line);
-  padding: 15px 10px;
-}
-th {
-  color: var(--muted);
-  font-weight: 500;
-}
-td button {
-  font-size: 12px;
-  padding: 8px 12px;
-  min-height: 35px;
-}
-.auth {
-  max-width: 440px;
-  margin: 6vh auto;
-}
-.auth h1 {
-  text-align: center;
-  margin: 25px 0;
-}
-.auth .brand {
-  text-align: center;
-}
-.pad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  direction: ltr;
-}
-.pad button {
-  font-size: 23px;
-  min-height: 64px;
-}
-.pin {
-  text-align: center;
-  letter-spacing: 10px;
-  font-size: 24px;
-}
-.auth .panel {
-  margin-top: 28px;
-}
-.spacer {
-  height: 20px;
-}
-#toast {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  background: var(--gold);
-  color: #211a13;
-  padding: 18px 24px;
-  max-width: 500px;
-  border-radius: 14px;
-  box-shadow: 0 10px 50px #0008;
-  z-index: 50;
-}
-.receipt {
-  max-width: 420px;
-  margin: 20px auto;
-  background: white;
-  color: #111;
-  padding: 28px;
-}
-.receipt h2 {
-  text-align: center;
-  color: #111;
-}
-.receipt td,
-.receipt th {
-  border-color: #ccc;
-  color: #111;
-}
-.receipt p {
-  text-align: center;
-  margin: 15px 0;
-}
-.hint {
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.8;
-  margin: 12px 0;
-}
-.progress {
-  background: var(--gold);
-  height: 8px;
-  border-radius: 6px;
-  margin: 8px 0 14px;
-}
-@media (max-width: 1050px) {
-  .shell {
-    grid-template-columns: 160px 1fr;
-  }
-  .content {
-    padding: 18px;
-  }
-  .pos {
-    grid-template-columns: 1fr;
-  }
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 650px) {
-  .shell {
-    display: block;
-  }
-  nav {
-    flex-direction: row;
-    overflow: auto;
-    padding: 10px;
-  }
-  nav button {
-    white-space: nowrap;
-    font-size: 13px;
-    padding: 10px;
-  }
-  .brand {
-    font-size: 22px;
-  }
-  header {
-    flex-wrap: wrap;
-  }
-  .stats {
-    gap: 8px;
-  }
-  .stat {
-    padding: 15px;
-  }
-  .stat b {
-    font-size: 21px;
-  }
-  .content {
-    padding: 14px;
-  }
+input {
+  user-select: text;
 }
 @media print {
-  header,
-  nav,
-  button,
-  #toast {
-    display: none;
+  body * {
+    visibility: hidden;
   }
-  .shell {
-    display: block;
+  #printable-receipt,
+  #printable-receipt * {
+    visibility: visible;
   }
-  .content {
-    padding: 0;
-  }
-  .receipt {
-    margin: 0;
+  #printable-receipt {
+    position: absolute;
+    right: 0;
+    top: 0;
+    box-shadow: none;
     width: 72mm;
   }
+  #modal-backdrop {
+    position: static;
+    background: #fff;
+  }
 }
-
-.short {
-  width: 190px;
+#printable-report {
+  display: none;
+}
+@page financial {
+  size: A4;
+  margin: 15mm;
+}
+@media print {
+  #printable-report {
+    display: block;
+    page: financial;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: black;
+    font-family: Cairo, sans-serif;
+  }
+  #printable-report,
+  #printable-report * {
+    visibility: visible;
+  }
+  #printable-report h1,
+  #printable-report h2 {
+    font-size: 22px;
+    text-align: center;
+    margin: 16px;
+  }
+  #printable-report p {
+    margin: 20px 0;
+  }
+  #printable-report table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #printable-report th,
+  #printable-report td {
+    border: 1px solid #ccc;
+    padding: 12px;
+    text-align: right;
+  }
+  #printable-report thead {
+    display: table-header-group;
+  }
+  #printable-report tr {
+    break-inside: avoid;
+  }
+}
+/* The embedded phone has its own narrow viewport inside the desktop page. */
+#android-app-content .grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#android-app-content .grid-cols-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+#android-app-content .text-xl {
+  font-size: 1.2rem;
+}
+#android-app-content .text-2xl {
+  font-size: 1.25rem;
+}
+@media print {
+  #printable-receipt {
+    background: white !important;
+    color: #111 !important;
+  }
+  #printable-receipt * {
+    background: transparent !important;
+    color: #111 !important;
+    border-color: #aaa !important;
+  }
+  #printable-receipt svg {
+    filter: grayscale(1) brightness(0);
+  }
 }
